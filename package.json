@@ -1,0 +1,14 @@
+{
+  "name": "node-server",
+  "version": "0.1.0",
+  "description": "Express server setup for quick tests.",
+  "bin": "src/server.js",
+  "dependencies": {
+    "chalk": "^2.3.2",
+    "express": "^4.16.3",
+    "fs-extra": "^5.0.0",
+    "helmet": "^3.12.0"
+  },
+  "author": "Arne Seib",
+  "license": "MIT"
+}
