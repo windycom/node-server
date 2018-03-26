@@ -7,7 +7,7 @@ Express server setup for quick tests.
 Install as global:
 
 ```
-sudo i -g windycom/node-server
+sudo npm install -g windycom/node-server
 ```
 
 ### Usage
@@ -16,7 +16,14 @@ sudo i -g windycom/node-server
 node-server path/to/file.js [configname]
 ```
 
-`file.js` must export a single function.
+`file.js` must export a single function:
+
+```
+module.exports = (app) => {
+	// app is the express-app.
+  // add your middleware / routes / whatever here
+};
+```
 
 When the server starts, it:
 
