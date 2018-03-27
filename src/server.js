@@ -12,6 +12,7 @@ const Path = require('path');
 const chalk = require('chalk');
 const express = require('express');
 const helmet = require('helmet');
+const cors = require('cors');
 const { loadConfig, setConfig, config } = require('./config');
 
 const app = express();
@@ -54,6 +55,7 @@ const run = async () => {
 		hsts: false,
 		noCache: true,
 	}));
+	app.use(cors());
 	process.stdout.write(chalk.green(`✓ Ok.\n`));
 
 	// load service

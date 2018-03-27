@@ -1,10 +1,11 @@
 {
   "name": "node-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Express server setup for quick tests.",
   "bin": "src/server.js",
   "dependencies": {
     "chalk": "^2.3.2",
+    "cors": "^2.8.4",
     "express": "^4.16.3",
     "fs-extra": "^5.0.0",
     "helmet": "^3.12.0"
