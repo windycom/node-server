@@ -9,72 +9,130 @@
  */
 
 const Path = require('path');
+const { createServer } = require('http');
 const chalk = require('chalk');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-const { loadConfig, setConfig, config } = require('./config');
+const pckg = require('../package.json');
 
-const app = express();
+let server = null;
+let app = null;
+
+// Defaults:
+const DEFAULTS = {
+	// port 8100
+	PORT: 8100,
+	// localhost only
+	HOSTNAME: '127.0.0.1',
+	HELMET: {
+		// disable Strict Transport Security
+		hsts: false,
+		// disable cache
+		noCache: true,
+	},
+	CORS: {},
+};
+
+let debug = false;
 
 //------------------------------------------------------------------------------
-// Promisify app.listen()
-const listen = () => new Promise((resolve, reject) => {
-	app.listen(config.port, config.bind, resolve).on('error', reject);
+// Promisified server.listen()
+const listen = (...args) => new Promise((resolve, reject) => {
+	server.listen(...args, resolve).on('error', reject);
 });
 
 //------------------------------------------------------------------------------
-const run = async () => {
-	if (process.argv.length < 3) {
-		console.error('Usage: node-server service.js [config-file.js]');
+const main = async () => {
+	const serviceNames = process.argv.slice(2);
+	if (!serviceNames.length) {
+		console.error('Usage: node-server <js-file> [...<js-file>]');
 		process.exit(1);
 	}
 
-	// load config
-	const configFilename = process.argv.length > 3
-		? process.argv[3]
-		: 'default';
-	const options = await loadConfig(configFilename);
-	console.log(`Config: ${chalk.whiteBright(options.__file)}.`);
-
-	// update process
-	process.env.NODE_ENV = options.NODE_ENV;
-	console.log(`NODE_ENV: ${chalk.whiteBright(process.env.NODE_ENV)}.`);
-
-	// run server
-	process.stdout.write(chalk.yellow(`*** Booting server\n`));
-
-	// validate and set config
-	await setConfig(options);
-
-	// some basic express setup
-	process.stdout.write(chalk.yellow(`Initializing server... `));
-	app.enable('trust proxy');
-	app.set('etag', false);
-	app.use(helmet({
-		hsts: false,
-		noCache: true,
-	}));
-	app.use(cors());
-	process.stdout.write(chalk.green(`✓ Ok.\n`));
+	console.log(`*********************************`);
+	console.log(`*`, chalk.whiteBright(`node-server ${pckg.version}`));
+	console.log(`*********************************`);
+	server = createServer(app = express());
 
 	// load service
-	const service = Path.resolve(process.cwd(), process.argv[2]);
-	process.stdout.write(chalk.yellow(`Loading service from ${service}... `));
-	await require(service)(app);
-	process.stdout.write(chalk.green(`\n✓ Ok.\n`));
+	const services = serviceNames.map((name) => {
+		const servicePath = Path.resolve(process.cwd(), name);
+		console.log(chalk.yellow(`Loading ${chalk.whiteBright(servicePath)}`));
+		const service = require(servicePath);
+		// init-function
+		const init = (typeof service === 'function')
+			? service
+			: service.init;
+		if (typeof init !== 'function') {
+			throw new TypeError('Service export must be a function or an object containing a "init()" function.');
+		}
+		return { service, init };
+	});
+	console.log(chalk.green(`✓ ${services.length} Service(s) loaded.`));
+
+	// first service only is used for configuration
+	const firstService = services[0].service;
+
+	debug = (typeof firstService.DEBUG === 'undefined')
+		? true
+		: !!firstService.DEBUG;
+
+	process.stdout.write(chalk.yellow(`Checking config... `));
+	// port
+	const port = parseInt(firstService.PORT || DEFAULTS.PORT, 10);
+	// hostname
+	const hostname = (typeof firstService.HOSTNAME === 'undefined')
+		? DEFAULTS.HOSTNAME
+		: firstService.HOSTNAME;
+	// helmet options
+	const helmetOptions = Object.assign(DEFAULTS.HELMET, firstService.HELMET);
+	// cors options
+	const corsOptions = Object.assign(DEFAULTS.CORS, firstService.CORS);
+
+	// validate
+	if (isNaN(port)) {
+		throw new TypeError('Port must be a number');
+	}
+	console.log(chalk.green(`✓ Ok.`));
+
+	process.stdout.write(chalk.yellow(`Initializing server... `));
+	// trust proxy
+	app.enable('trust proxy');
+
+	// disable etag
+	app.set('etag', false);
+
+	// helmet
+	app.use(helmet(helmetOptions));
+
+	// cors
+	app.use(cors(corsOptions));
+	console.log(chalk.green(`✓ Ok.`));
+
+	console.log(chalk.yellow(`Initializing services:`));
+	for (const service of services) {
+		await service.init(app, { server, debug, port, hostname });
+	}
+	console.log(chalk.green(`✓ Done.`));
 
 	// listen
-	process.stdout.write(chalk.yellow(`Starting server on ${config.bind}:${chalk.whiteBright(config.port)}... `));
-	await listen();
-	process.stdout.write(chalk.green(`✓ Ok.\n`));
+	const onHost = hostname ? `${hostname}:` : 'port ';
+	process.stdout.write(chalk.yellow(`Starting server on ${onHost}${chalk.whiteBright(port)}... `));
+	await listen(port, hostname);
+	console.log(chalk.green(`✓ Ok.`));
 
 	// done
-	process.stdout.write(chalk.greenBright(`Server up and running.\n`));
+	console.log(chalk.greenBright(`Server up and running.`));
 };
 
 //==============================================================================
-run().then(() => { process.send && process.send('ready'); }).catch(error => {
-	console.log(chalk.red(`✗ ${error.message}`));
+// Sends a 'ready'-message in case this is run via pm2.
+main().then(() => { process.send && process.send('ready'); }).catch(error => {
+	console.log(chalk.red(`✗`));
+	console.log(chalk.red(error.message));
+	if (debug) {
+		console.log(error);
+	}
 	process.exit(1);
 });

@@ -1,7 +1,17 @@
 {
   "name": "node-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Express server setup for quick tests.",
+  "author": "Arne Seib",
+  "license": "MIT",
+  "homepage": "https://github.com/windycom/node-server/blob/master/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/windycom/node-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/windycom/node-server/issues"
+  },
   "bin": "src/server.js",
   "dependencies": {
     "chalk": "^2.3.2",
@@ -9,7 +19,5 @@
     "express": "^4.16.3",
     "fs-extra": "^5.0.0",
     "helmet": "^3.12.0"
-  },
-  "author": "Arne Seib",
-  "license": "MIT"
+  }
 }
