@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 'use strict';
 
 /**
@@ -34,8 +32,6 @@ const DEFAULTS = {
 	CORS: {},
 };
 
-let debug = false;
-
 //------------------------------------------------------------------------------
 // Promisified server.listen()
 const listen = (...args) => new Promise((resolve, reject) => {
@@ -43,9 +39,8 @@ const listen = (...args) => new Promise((resolve, reject) => {
 });
 
 //------------------------------------------------------------------------------
-const main = async () => {
-	const serviceNames = process.argv.slice(2);
-	if (!serviceNames.length) {
+const runServer = async (sourceFiles) => {
+	if (!sourceFiles.length) {
 		console.error('Usage: node-server <js-file> [...<js-file>]');
 		process.exit(1);
 	}
@@ -55,8 +50,8 @@ const main = async () => {
 	console.log(`*********************************`);
 	server = createServer(app = express());
 
-	// load service
-	const services = serviceNames.map((name) => {
+	// load services
+	const serviceModules = sourceFiles.map((name) => {
 		const servicePath = Path.resolve(process.cwd(), name);
 		console.log(chalk.yellow(`Loading ${chalk.whiteBright(servicePath)}`));
 		const service = require(servicePath);
@@ -69,24 +64,25 @@ const main = async () => {
 		}
 		return { service, init };
 	});
-	console.log(chalk.green(`✓ ${services.length} Service(s) loaded.`));
+	console.log(chalk.green(`✓ ${serviceModules.length} Service(s) loaded.`));
 
 	// first service only is used for configuration
-	const firstService = services[0].service;
+	const firstService = serviceModules[0].service;
 
-	debug = (typeof firstService.DEBUG === 'undefined')
-		? true
-		: !!firstService.DEBUG;
-
+	// -- validate config
 	process.stdout.write(chalk.yellow(`Checking config... `));
+
 	// port
 	const port = parseInt(firstService.PORT || DEFAULTS.PORT, 10);
+
 	// hostname
 	const hostname = (typeof firstService.HOSTNAME === 'undefined')
 		? DEFAULTS.HOSTNAME
 		: firstService.HOSTNAME;
+
 	// helmet options
 	const helmetOptions = Object.assign(DEFAULTS.HELMET, firstService.HELMET);
+
 	// cors options
 	const corsOptions = Object.assign(DEFAULTS.CORS, firstService.CORS);
 
@@ -94,9 +90,12 @@ const main = async () => {
 	if (isNaN(port)) {
 		throw new TypeError('Port must be a number');
 	}
+
 	console.log(chalk.green(`✓ Ok.`));
 
+	// -- setup server
 	process.stdout.write(chalk.yellow(`Initializing server... `));
+
 	// trust proxy
 	app.enable('trust proxy');
 
@@ -110,29 +109,19 @@ const main = async () => {
 	app.use(cors(corsOptions));
 	console.log(chalk.green(`✓ Ok.`));
 
+	// -- init services
 	console.log(chalk.yellow(`Initializing services:`));
-	for (const service of services) {
-		await service.init(app, { server, debug, port, hostname });
+	for (const service of serviceModules) {
+		await service.init(app, { server, port, hostname });
 	}
 	console.log(chalk.green(`✓ Done.`));
 
-	// listen
+	// -- start server
 	const onHost = hostname ? `${hostname}:` : 'port ';
 	process.stdout.write(chalk.yellow(`Starting server on ${onHost}${chalk.whiteBright(port)}... `));
 	await listen(port, hostname);
 	console.log(chalk.green(`✓ Ok.`));
-
-	// done
 	console.log(chalk.greenBright(`Server up and running.`));
 };
 
-//==============================================================================
-// Sends a 'ready'-message in case this is run via pm2.
-main().then(() => { process.send && process.send('ready'); }).catch(error => {
-	console.log(chalk.red(`✗`));
-	console.log(chalk.red(error.message));
-	if (debug) {
-		console.log(error);
-	}
-	process.exit(1);
-});
+module.exports = runServer;

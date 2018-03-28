@@ -53,7 +53,6 @@ module.exports.HELMET = {
   noCache: true,
 };
 module.exports.CORS = {};
-module.exports.DEBUG = true;
 ```
 
 The values above are the defaults that will be used if you don't specify overrides.
@@ -64,7 +63,6 @@ first one. Values on other services will be ignored.
 The options-object passed to `init()` has the following properties:
 
 - `server`: The http-server. Use to add e.g. websockets.
-- `debug`: If `true`, full errors will be shown (only the message otherwise).
 - `port`: The port used.
 - `hostname`: The hostname used.
 
