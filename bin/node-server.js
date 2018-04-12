@@ -11,9 +11,15 @@
 const chalk = require('chalk');
 const runServer = require('../src/server');
 
+const sourceFiles = process.argv.slice(2);
+if (!sourceFiles.length) {
+	console.error('Usage: node-server <js-file> [...<js-file>]');
+	process.exit(1);
+}
+
 //==============================================================================
 // Sends a 'ready'-message in case this is run via pm2.
-runServer(process.argv.slice(2))
+runServer(...sourceFiles)
 	.then(() => { process.send && process.send('ready'); })
 	.catch(error => {
 		console.log(chalk.red(`✗`));

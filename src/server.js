@@ -7,6 +7,7 @@
  */
 
 const Path = require('path');
+const Fs = require('fs-extra');
 const { createServer } = require('http');
 const chalk = require('chalk');
 const express = require('express');
@@ -39,31 +40,45 @@ const listen = (...args) => new Promise((resolve, reject) => {
 });
 
 //------------------------------------------------------------------------------
-const runServer = async (sourceFiles) => {
-	if (!sourceFiles.length) {
-		console.error('Usage: node-server <js-file> [...<js-file>]');
-		process.exit(1);
-	}
-
+const runServer = async (...sources) => {
 	console.log(`*********************************`);
 	console.log(`*`, chalk.whiteBright(`node-server ${pckg.version}`));
 	console.log(`*********************************`);
 	server = createServer(app = express());
 
 	// load services
-	const serviceModules = sourceFiles.map((name) => {
-		const servicePath = Path.resolve(process.cwd(), name);
-		console.log(chalk.yellow(`Loading ${chalk.whiteBright(servicePath)}`));
-		const service = require(servicePath);
-		// init-function
-		const init = (typeof service === 'function')
-			? service
-			: service.init;
-		if (typeof init !== 'function') {
-			throw new TypeError('Service export must be a function or an object containing a "init()" function.');
+	console.log(chalk.yellow(`Loading services:`));
+	const serviceModules = sources.map((service) => {
+		switch (typeof service) {
+			case 'string': {
+				const servicePath = Path.resolve(process.cwd(), service);
+				console.log(chalk.yellow(`Loading ${chalk.whiteBright(servicePath)}`));
+				service = require(servicePath);
+			}
+			// fallthrough
+			case 'object':
+			case 'function': {
+				// init-function
+				const init = (typeof service === 'function')
+					? service
+					: service.init;
+				if (typeof init !== 'function') {
+					throw new TypeError('Service export must be a function or an object containing a "init()" function.');
+				}
+				return { service, init };
+			}
+			default:
+				throw new TypeError(`Arguments passed to runServer must be either a string or a function. Have ${typeof arg}.`)
 		}
-		return { service, init };
 	});
+
+	// allow service to do loading before anything else is happening
+	console.log(chalk.yellow(`Calling service.load()`));
+	for (const service of serviceModules) {
+		if (typeof service.service.load === 'function') {
+			await service.service.load();
+		}
+	}
 	console.log(chalk.green(`✓ ${serviceModules.length} Service(s) loaded.`));
 
 	// first service only is used for configuration

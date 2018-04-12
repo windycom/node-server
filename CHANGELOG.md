@@ -1,5 +1,8 @@
 # Changelog
 
+## Upcoming
+Usable via API.
+
 ## v0.1.2 (2018-03-28)
 
 Removed configuration files.
