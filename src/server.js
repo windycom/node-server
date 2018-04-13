@@ -7,7 +7,6 @@
  */
 
 const Path = require('path');
-const Fs = require('fs-extra');
 const { createServer } = require('http');
 const chalk = require('chalk');
 const express = require('express');
