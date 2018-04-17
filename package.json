@@ -12,7 +12,11 @@
   "bugs": {
     "url": "https://github.com/windycom/node-server/issues"
   },
-  "bin": "src/server.js",
+  "main": "src/server.js",
+  "bin": {
+    "node-server": "bin/node-server.js",
+    "node-dev-server": "bin/node-dev-server.js"
+  },
   "dependencies": {
     "chalk": "^2.3.2",
     "cors": "^2.8.4",
