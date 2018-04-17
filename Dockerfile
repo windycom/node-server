@@ -1,7 +1,7 @@
 FROM node:carbon
 
 # Create app directory
-WORKDIR /opt/node-server
+WORKDIR /opt/windyty/scripts/node-server
 
 COPY package*.json ./
 
