@@ -28,7 +28,7 @@ node-server <js-file> [...<js-file>]
 Each file (a "service") must export an (asynchronous) `init()`-function, either
 as the default (`module.exports`) or as a named function (`module.exports.init`).
 
-The function will recieve the expressjs-app, together with an options object, and
+The function will receive the expressjs-app, together with an options object, and
 is free to do with `app` whatever it feels like (add middleware, set some routes etc):
 
 ```JavaScript
